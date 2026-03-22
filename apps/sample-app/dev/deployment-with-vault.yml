@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+  namespace: dev
+  labels:
+    app: sample-app
+    env: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+        env: dev
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "dev"
+        vault.hashicorp.com/agent-inject-secret-config: "secret/data/dev/sample-app"
+        vault.hashicorp.com/agent-inject-template-config: |
+          {{- with secret "secret/data/dev/sample-app" -}}
+          export DB_HOST="{{ .Data.data.db_host }}"
+          export DB_PASSWORD="{{ .Data.data.db_password }}"
+          export API_KEY="{{ .Data.data.api_key }}"
+          {{- end }}
+    spec:
+      serviceAccountName: deployer
+      containers:
+        - name: sample-app
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
